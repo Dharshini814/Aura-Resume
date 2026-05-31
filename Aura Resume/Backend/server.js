@@ -22,8 +22,10 @@ const PORT = process.env.PORT || 5000;
 // CORS (frontend connection)
 app.use(
   cors({
-    origin: "http://localhost:5000",
-    "https://aura-resume-dujg.onrender.com"
+    origin: [
+      "http://localhost:5000",
+      "https://aura-resume-dujg.onrender.com"
+    ],
     credentials: true,
   })
 );
