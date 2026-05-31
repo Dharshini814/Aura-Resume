@@ -139,13 +139,13 @@ router.get(
 
   passport.authenticate("google", {
     failureRedirect:
-      "http://localhost:5000/login.html",
+      "https://aura-resume-dujg.onrender.com/login.html",
   }),
 
   (req, res) => {
 
     res.redirect(
-      "http://localhost:5000/index.html"
+      "https://aura-resume-dujg.onrender.com/index.html"
     );
   }
 );
