@@ -29,7 +29,7 @@ passport.use(
       clientSecret:
         process.env.GOOGLE_CLIENT_SECRET,
 
-      callbackURL: "http://localhost:5000/api/auth/google/callback",
+     callbackURL: "https://aura-resume-dujg.onrender.com/api/auth/google/callback",
     },
 
     async (
