@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA | Precision Editor</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        bgMain: '#09090b', // Zinc 950
+                        bgPanel: '#18181b', // Zinc 900
+                        borderLine: '#27272a', // Zinc 800
+                        accent: '#6366f1', // Indigo 500
+                        accentHover: '#4f46e5', // Indigo 600
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Icons & Fonts -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- PDF Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* Strict Layout Reset */
+        body { 
+            background-color: theme('colors.bgMain'); 
+            color: #e4e4e7;
+            margin: 0; padding: 0; 
+            min-height: 100vh;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: theme('colors.borderLine'); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        /* Form Inputs */
+        .aura-input {
+            width: 100%; 
+            background: #000; 
+            border: 1px solid theme('colors.borderLine');
+            color: #fff; 
+            border-radius: 0.5rem; 
+            padding: 0.6rem 0.8rem; 
+            font-size: 0.875rem;
+            transition: all 0.2s ease; 
+            outline: none;
+        }
+        .aura-input:focus { 
+            border-color: theme('colors.accent'); 
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15); 
+        }
+        .input-label { 
+            display: block; font-size: 0.7rem; font-weight: 600; 
+            color: #a1a1aa; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* Accordions */
+        .section-panel { 
+            background: theme('colors.bgPanel'); 
+            border: 1px solid theme('colors.borderLine'); 
+            border-radius: 0.75rem; 
+            margin-bottom: 1rem; 
+            overflow: hidden; 
+            transition: border-color 0.2s ease;
+        }
+        .section-panel:hover { border-color: #3f3f46; }
+        .section-header { 
+            padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; 
+            cursor: pointer; user-select: none; background: rgba(255,255,255,0.02); 
+        }
+        .section-content { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease; }
+        .section-panel.active .section-content { grid-template-rows: 1fr; }
+        .content-inner { overflow: hidden; }
+
+        /* --- ISOLATED PDF CANVAS --- */
+        .canvas-bg {
+            background-color: #111;
+            background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        #pdf-wrapper {
+            position: relative;
+            margin: 0 auto; 
+            /* Wrapper scales to push scrollbars correctly */
+            transition: width 0.2s ease, height 0.2s ease;
+        }
+
+        /* The actual Document */
+        #pdf-document {
+            /* Strict A4 dimensions at 96 DPI */
+            width: 794px; height: 1122px; 
+            background: #ffffff; color: #000000;
+            padding: 48px 56px; /* Professional Margins */
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Clean FAANG Standard */
+            box-sizing: border-box; overflow: hidden;
+            
+            /* Scaling pivots from the top-left */
+            transform-origin: top left;
+            position: absolute; top: 0; left: 0;
+            transition: transform 0.2s ease;
+        }
+
+        /* CRITICAL: Pure export container that bypasses scaling/transforms */
+        #pdf-export-container {
+            width: 794px; height: 1122px; 
+            background: #ffffff; color: #000000;
+            padding: 48px 56px; 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            box-sizing: border-box; overflow: hidden;
+            position: absolute; top: 0; left: 0;
+            z-index: 50; /* Behind the solid z-[100] overlay */
+        }
+
+        /* High-End ATS Typography */
+        .pdf-name { font-size: 26pt; font-weight: 700; color: #000; margin-bottom: 4px; text-align: center; letter-spacing: -0.5px; }
+        .pdf-contact { font-size: 9.5pt; color: #333; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+        .pdf-contact span { display: inline-flex; align-items: center; }
+        
+        .pdf-section-title { 
+            font-size: 13pt; font-weight: 700; color: #000; 
+            border-bottom: 1.5px solid #000; 
+            margin-top: 20px; margin-bottom: 12px; padding-bottom: 4px; 
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        .pdf-text { font-size: 10pt; line-height: 1.5; color: #222; text-align: left; margin-bottom: 12px;}
+        
+        .pdf-item { margin-bottom: 14px; }
+        .pdf-item-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;}
+        .pdf-item-title { font-size: 11pt; font-weight: 700; color: #000; }
+        .pdf-item-date { font-size: 10pt; color: #000; font-weight: 600; text-align: right; white-space: nowrap;}
+        
+        .pdf-item-sub { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;}
+        .pdf-item-subtitle { font-size: 10pt; font-weight: 600; color: #333; font-style: italic; }
+        .pdf-item-location { font-size: 10pt; color: #444; text-align: right; }
+        
+        .pdf-bullets { margin-top: 4px; padding-left: 16px; margin-bottom: 0;}
+        .pdf-bullet { 
+            font-size: 10pt; color: #111; margin-bottom: 4px; 
+            line-height: 1.5; text-align: left; 
+            position: relative;
+            display: flex;
+        }
+        .pdf-bullet::before { 
+            content: "•"; position: absolute; left: -14px; top: 0; 
+            color: #000; font-weight: bold;
+        }
+
+        /* Score Ring */
+        .progress-ring__circle { transition: stroke-dashoffset 0.8s ease-in-out, stroke 0.3s; transform: rotate(-90deg); transform-origin: 50% 50%; }
+        
+        /* Smooth transitions */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- Application Wrapper (Isolates UI layout from the PDF engine) -->
+    <div id="app-container" class="flex flex-col h-screen w-screen overflow-hidden">
+
+        <!-- Navigation Bar -->
+        <nav class="h-16 border-b border-borderLine bg-bgMain flex items-center justify-between px-6 z-20 shrink-0">
+            <div class="flex items-center gap-6">
+            
+            <div class="h-6 w-px bg-borderLine"></div>
+            
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i data-lucide="file-check-2" class="w-4 h-4 text-white"></i>
+                </div>
+                <span class="text-lg font-bold text-white tracking-tight">AURA <span class="font-normal text-zinc-400">Builder</span></span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="exportPDF()" class="px-5 py-2.5 rounded-lg bg-accent hover:bg-accentHover text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] group">
+                <i data-lucide="download" class="w-4 h-4 group-hover:-translate-y-0.5 transition-transform"></i> Download ATS PDF
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex min-h-0">
+        
+        <!-- Left Panel: Editor -->
+        <div class="w-full lg:w-[45%] xl:w-[40%] flex flex-col bg-bgMain border-r border-borderLine z-10 shrink-0">
+            
+            <!-- Score & Target Header -->
+            <div class="h-24 p-6 border-b border-borderLine bg-bgPanel flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i> ATS Diagnostic Score
+                    </h2>
+                    <input type="text" id="target-role" class="bg-transparent border-b border-zinc-700 focus:border-accent outline-none text-xs text-zinc-400 focus:text-white placeholder-zinc-600 w-40 mt-2 pb-1 transition-colors" placeholder="Target Role (e.g. SDE II)..." oninput="processUpdate()">
+                </div>
+                
+                <div class="flex items-center gap-4 group cursor-help" title="Score based on FAANG resume standards (Metrics, Action Verbs, Sections).">
+                    <div class="relative w-14 h-14">
+                        <svg class="w-full h-full" viewBox="0 0 100 100">
+                            <circle class="text-borderLine stroke-current" stroke-width="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+                            <circle id="score-ring" class="text-accent stroke-current progress-ring__circle drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" stroke-width="8" stroke-linecap="round" cx="50" cy="50" r="40" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="score-number" class="text-lg font-bold text-white">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor Form Scroll Area -->
+            <div class="flex-1 overflow-y-auto p-6" id="editor-container">
+                
+                <!-- Contact Info -->
+                <div class="section-panel active" id="panel-contact">
+                    <div class="section-header" onclick="togglePanel('panel-contact')">
+                        <span class="font-semibold text-white flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-accent"></i> Contact Details</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500 transition-transform"></i>
+                    </div>
+                    <div class="section-content">
+                        <div class="content-inner p-5 pt-1 border-t border-borderLine mt-2 grid grid-cols-2 gap-4">
+                            <div class="col-span-2"><label class="input-label">Full Name</label><input type="text" id="val-name" class="aura-input font-bold text-base" oninput="processUpdate()"></div>
+                            <div class="col-span-2"><label class="input-label">Location (City, State)</label><input type="text" id="val-location" class="aura-input" oninput="processUpdate()"></div>
+                            <div><label class="input-label">Email Address</label><input type="email" id="val-email" class="aura-input" oninput="processUpdate()"></div>
+                            <div><label class="input-label">Phone Number</label><input type="text" id="val-phone" class="aura-input" oninput="processUpdate()"></div>
+                            <div class="col-span-2"><label class="input-label">Links (LinkedIn | GitHub | Portfolio)</label><input type="text" id="val-links" class="aura-input" oninput="processUpdate()"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Professional Summary -->
+                <div class="section-panel" id="panel-summary">
+                    <div class="section-header" onclick="togglePanel('panel-summary')">
+                        <span class="font-semibold text-white flex items-center gap-2"><i data-lucide="align-left" class="w-4 h-4 text-blue-400"></i> Professional Summary</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500 transition-transform"></i>
+                    </div>
+                    <div class="section-content">
+                        <div class="content-inner p-5 pt-1 border-t border-borderLine mt-2">
+                            <textarea id="val-summary" class="aura-input h-28 resize-none leading-relaxed" placeholder="Brief overview of your professional background, key achievements, and goals..." oninput="processUpdate()"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Experience -->
+                <div class="section-panel" id="panel-exp">
+                    <div class="section-header" onclick="togglePanel('panel-exp')">
+                        <span class="font-semibold text-white flex items-center gap-2"><i data-lucide="briefcase" class="w-4 h-4 text-emerald-400"></i> Experience</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500 transition-transform"></i>
+                    </div>
+                    <div class="section-content">
+                        <div class="content-inner p-5 pt-1 border-t border-borderLine mt-2">
+                            <div id="list-exp" class="space-y-4 mb-4"></div>
+                            <button onclick="addEntry('exp')" class="w-full py-2.5 border border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 hover:bg-white/5 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium"><i data-lucide="plus" class="w-4 h-4"></i> Add Experience</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects -->
+                <div class="section-panel" id="panel-proj">
+                    <div class="section-header" onclick="togglePanel('panel-proj')">
+                        <span class="font-semibold text-white flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-orange-400"></i> Projects</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500 transition-transform"></i>
+                    </div>
+                    <div class="section-content">
+                        <div class="content-inner p-5 pt-1 border-t border-borderLine mt-2">
+                            <div id="list-proj" class="space-y-4 mb-4"></div>
+                            <button onclick="addEntry('proj')" class="w-full py-2.5 border border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 hover:bg-white/5 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium"><i data-lucide="plus" class="w-4 h-4"></i> Add Project</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Education -->
+                <div class="section-panel" id="panel-edu">
+                    <div class="section-header" onclick="togglePanel('panel-edu')">
+                        <span class="font-semibold text-white flex items-center gap-2"><i data-lucide="graduation-cap" class="w-4 h-4 text-yellow-400"></i> Education</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500 transition-transform"></i>
+                    </div>
+                    <div class="section-content">
+                        <div class="content-inner p-5 pt-1 border-t border-borderLine mt-2">
+                            <div id="list-edu" class="space-y-4 mb-4"></div>
+                            <button onclick="addEntry('edu')" class="w-full py-2.5 border border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 hover:bg-white/5 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium"><i data-lucide="plus" class="w-4 h-4"></i> Add Education</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Skills -->
+                <div class="section-panel" id="panel-skills">
+                    <div class="section-header" onclick="togglePanel('panel-skills')">
+                        <span class="font-semibold text-white flex items-center gap-2"><i data-lucide="code" class="w-4 h-4 text-pink-400"></i> Technical Skills</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500 transition-transform"></i>
+                    </div>
+                    <div class="section-content">
+                        <div class="content-inner p-5 pt-1 border-t border-borderLine mt-2">
+                            <textarea id="val-skills" class="aura-input h-24 resize-none leading-relaxed" placeholder="Languages: Java, Python, C++&#10;Frameworks: React, Node.js, Spring Boot&#10;Tools: AWS, Docker, Git" oninput="processUpdate()"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="h-10"></div> 
+            </div>
+        </div>
+
+        <!-- Right Panel: Live Document Canvas -->
+        <div class="w-full lg:w-[55%] xl:w-[60%] flex flex-col bg-[#0a0a0a]">
+            
+            <!-- Canvas Toolbar -->
+            <div class="h-12 bg-black border-b border-borderLine flex items-center justify-between px-6 z-10 shrink-0">
+                <span class="text-xs font-mono text-zinc-500 uppercase tracking-wider flex items-center gap-2"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Live Preview</span>
+                
+                <div class="flex items-center gap-1 bg-bgPanel border border-borderLine rounded-md p-1 shadow-sm">
+                    <button onclick="zoomOut()" class="w-8 h-7 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <span id="zoom-level-text" class="text-xs font-mono text-zinc-300 px-2 w-14 text-center select-none">Fit</span>
+                    <button onclick="zoomIn()" class="w-8 h-7 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                    <div class="w-px h-4 bg-borderLine mx-1"></div>
+                    <button onclick="fitToScreen()" class="px-3 h-7 flex items-center justify-center text-xs font-medium text-accent hover:text-accentHover hover:bg-accent/10 rounded transition-colors">Fit Window</button>
+                </div>
+            </div>
+
+            <!-- Interactive Scrollable Canvas -->
+            <div id="canvas-scroll-area" class="flex-1 overflow-auto canvas-bg p-8 flex justify-center items-start">
+                <div id="pdf-wrapper">
+                    <div id="pdf-document">
+                        <!-- Injected Content Goes Here -->
+                        <div class="text-center">
+                            <div id="out-name" class="pdf-name"></div>
+                            <div class="pdf-contact" id="out-contact"></div>
+                        </div>
+                        <div id="out-body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+    </div>
+
+    <!-- Fullscreen Export Overlay (Solid background to hide the rendering process) -->
+    <div id="export-overlay" class="fixed inset-0 bg-bgMain z-[100] hidden flex-col items-center justify-center fade-in">
+        <div class="relative w-24 h-24 mb-8 flex items-center justify-center">
+            <!-- Pulsing aura -->
+            <div class="absolute inset-0 bg-accent/20 rounded-full animate-ping"></div>
+            <!-- Spinner -->
+            <div class="absolute inset-0 border-t-4 border-accent rounded-full animate-spin"></div>
+            <div class="absolute inset-2 border-r-4 border-purple-500 rounded-full animate-spin" style="animation-duration: 1.5s; animation-direction: reverse;"></div>
+            <i data-lucide="file-check-2" class="w-8 h-8 text-white relative z-10"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-white tracking-tight mb-3">Precision Render Engine</h2>
+        <p id="export-status" class="text-accent font-mono text-sm uppercase tracking-widest h-6">Initiating Protocol...</p>
+        
+        <!-- Progress Bar -->
+        <div class="w-64 h-1.5 bg-zinc-800 rounded-full mt-6 overflow-hidden">
+            <div id="export-progress" class="h-full bg-gradient-to-r from-accent to-purple-500 w-0"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // --- EXACT SCALING ENGINE (Fixes the Crop/Blank Bug) ---
+        const A4_WIDTH = 794; 
+        const A4_HEIGHT = 1122;
+        let currentScale = 1;
+
+        function applyScale(scale) {
+            currentScale = scale;
+            const doc = document.getElementById('pdf-document');
+            const wrapper = document.getElementById('pdf-wrapper');
+            const zoomText = document.getElementById('zoom-level-text');
+
+            // Scale document via CSS Transform
+            doc.style.transform = `scale(${scale})`;
+            
+            // Adjust wrapper absolute dimensions so the scroll container knows the boundries
+            wrapper.style.width = `${A4_WIDTH * scale}px`;
+            wrapper.style.height = `${A4_HEIGHT * scale}px`;
+
+            zoomText.innerText = `${Math.round(scale * 100)}%`;
+        }
+
+        function fitToScreen() {
+            const scrollArea = document.getElementById('canvas-scroll-area');
+            // Subtract padding (64px total = 32px per side)
+            const availWidth = scrollArea.clientWidth - 64;
+            const availHeight = scrollArea.clientHeight - 64;
+            
+            const scaleX = availWidth / A4_WIDTH;
+            const scaleY = availHeight / A4_HEIGHT;
+            
+            // Fit entirely in view
+            const fitScale = Math.min(scaleX, scaleY);
+            applyScale(fitScale);
+            document.getElementById('zoom-level-text').innerText = 'Fit';
+        }
+
+        function zoomIn() { applyScale(Math.min(currentScale + 0.1, 2.0)); }
+        function zoomOut() { applyScale(Math.max(currentScale - 0.1, 0.3)); }
+
+        window.addEventListener('resize', () => {
+            const zoomText = document.getElementById('zoom-level-text').innerText;
+            if(zoomText === 'Fit') { fitToScreen(); }
+        });
+
+        // --- ACCORDION LOGIC ---
+        function togglePanel(id) {
+            const panel = document.getElementById(id);
+            const icon = panel.querySelector('.section-header i[data-lucide="chevron-down"]');
+            if (panel.classList.contains('active')) {
+                panel.classList.remove('active'); 
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                panel.classList.add('active'); 
+                icon.style.transform = 'rotate(180deg)';
+                setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
+            }
+        }
+
+        // --- DATA ARCHITECTURE & MAPPING ---
+        let resumeData = { exp: [], proj: [], edu: [] };
+        
+        // Configuration maps editor fields to logical resume entities
+        const config = {
+            exp: { f1: 'Job Title', f2: 'Company', f3: 'Location', f4: 'Dates (e.g. Jun 2021 - Present)', f5: 'Bullet points (Use Action Verb + Metric + Impact)' },
+            proj: { f1: 'Project Name', f2: 'Technologies Used', f3: '', f4: 'Date (Optional)', f5: 'Project Details and Outcomes' },
+            edu: { f1: 'University Name', f2: 'Degree / Major', f3: 'Location', f4: 'Graduation Date', f5: 'GPA, Honors, Relevant Coursework' }
+        };
+
+        function initData() {
+            // Default High-Quality Template Data
+            document.getElementById('val-name').value = 'Rahul Sharma';
+            document.getElementById('val-email').value = 'rahul.sharma@example.com';
+            document.getElementById('val-phone').value = '+91 98765 43210';
+            document.getElementById('val-location').value = 'Bengaluru, Karnataka';
+            document.getElementById('val-links').value = 'linkedin.com/in/rahulsharma | github.com/rahulsh';
+            document.getElementById('val-summary').value = 'Results-driven Software Engineer with 3+ years of experience designing scalable backend architectures and robust web applications. Proven ability to optimize APIs, reducing latency by 40%. Adept at collaborating in agile environments to deliver high-impact technical solutions.';
+            document.getElementById('val-skills').value = 'Languages: Python, JavaScript/TypeScript, Java, SQL\nFrameworks: React, Node.js, Express, Spring Boot\nTools/Cloud: AWS (S3, EC2, Lambda), Docker, Git, CI/CD';
+
+            resumeData.exp.push({ 
+                id: 1, f1: 'Software Development Engineer II', f2: 'TechNova Solutions', f3: 'Bengaluru, IN', f4: 'Aug 2022 - Present', 
+                f5: 'Architected and deployed microservices handling 1M+ daily transactions, improving system uptime to 99.99%.\nSpearheaded the migration to a serverless AWS architecture, reducing infrastructure costs by $15,000 annually.\nMentored 3 junior developers, accelerating team deployment speed by 25% through improved CI/CD pipelines.' 
+            });
+
+            resumeData.proj.push({
+                id: 2, f1: 'AURA Resume Engine', f2: 'React, Tailwind CSS, Node.js', f3: '', f4: 'Jan 2024 - Mar 2024',
+                f5: 'Engineered a high-performance ATS resume builder utilized by 5,000+ active users.\nImplemented a zero-overlap layout algorithm using CSS transforms, ensuring pixel-perfect PDF rendering.'
+            });
+
+            resumeData.edu.push({
+                id: 3, f1: 'National Institute of Technology', f2: 'B.Tech in Computer Science', f3: 'Surathkal, IN', f4: 'May 2022',
+                f5: 'Cumulative GPA: 8.8/10.0\nAwards: Winner of Smart India Hackathon 2021 (Top 1% out of 10,000 teams)'
+            });
+
+            renderLists();
+            processUpdate();
+            setTimeout(fitToScreen, 100); 
+        }
+
+        // --- CRUD OPERATIONS ---
+        function addEntry(type) { 
+            resumeData[type].push({ id: Date.now(), f1: '', f2: '', f3: '', f4: '', f5: '' }); 
+            renderLists(); processUpdate(); 
+        }
+        function removeEntry(type, id) { 
+            resumeData[type] = resumeData[type].filter(i => i.id !== id); 
+            renderLists(); processUpdate(); 
+        }
+        function updateEntry(type, id, field, val) { 
+            const item = resumeData[type].find(i => i.id === id); 
+            if(item) item[field] = val; 
+            processUpdate(); 
+        }
+
+        // --- DOM RENDERER FOR EDITOR PANELS ---
+        function renderLists() {
+            ['exp', 'proj', 'edu'].forEach(type => {
+                const container = document.getElementById(`list-${type}`);
+                container.innerHTML = '';
+                const cfg = config[type];
+                
+                resumeData[type].forEach(item => {
+                    // Create input fields dynamically based on config map
+                    const f3Input = cfg.f3 !== '' ? `<div><label class="input-label">${cfg.f3}</label><input type="text" class="aura-input" value="${item.f3}" oninput="updateEntry('${type}', ${item.id}, 'f3', this.value)"></div>` : '';
+
+                    container.innerHTML += `
+                        <div class="p-4 bg-black border border-borderLine rounded-xl relative group fade-in">
+                            <button onclick="removeEntry('${type}', ${item.id})" class="absolute top-3 right-3 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-colors z-10 bg-bgPanel rounded p-1.5" title="Remove Entry">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                            <div class="grid grid-cols-2 gap-3 mb-3 pr-10">
+                                <div><label class="input-label">${cfg.f1}</label><input type="text" class="aura-input font-semibold" value="${item.f1}" oninput="updateEntry('${type}', ${item.id}, 'f1', this.value)"></div>
+                                <div><label class="input-label">${cfg.f2}</label><input type="text" class="aura-input" value="${item.f2}" oninput="updateEntry('${type}', ${item.id}, 'f2', this.value)"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                ${f3Input}
+                                <div><label class="input-label">${cfg.f4}</label><input type="text" class="aura-input" value="${item.f4}" oninput="updateEntry('${type}', ${item.id}, 'f4', this.value)"></div>
+                            </div>
+                            <div><label class="input-label">${cfg.f5}</label><textarea class="aura-input h-20 resize-y" oninput="updateEntry('${type}', ${item.id}, 'f5', this.value)">${item.f5}</textarea></div>
+                        </div>
+                    `;
+                });
+            });
+            lucide.createIcons();
+        }
+
+        // Utility to escape HTML to prevent breaking document layout
+        const escapeHTML = (str) => str ? str.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+
+        // --- PDF ENGINE (Live DOM Rebuild) ---
+        function processUpdate() {
+            // 1. Header & Contact
+            document.getElementById('out-name').innerText = document.getElementById('val-name').value;
+            
+            let contactArr = [];
+            ['val-location', 'val-phone', 'val-email', 'val-links'].forEach(id => {
+                const val = document.getElementById(id).value.trim();
+                if(val) {
+                    // Split by '|' to allow multiple links to format nicely
+                    const parts = val.split('|').map(p => p.trim());
+                    parts.forEach(p => contactArr.push(`<span>${escapeHTML(p)}</span>`));
+                }
+            });
+            document.getElementById('out-contact').innerHTML = contactArr.join('<span style="color:#777; margin:0 8px;">|</span>');
+
+            // 2. Sections Setup
+            const body = document.getElementById('out-body');
+            body.innerHTML = '';
+            
+            const buildSec = (title, content) => content ? `<div class="pdf-section-title">${title}</div>${content}` : '';
+
+            // 3. Summary
+            const summary = document.getElementById('val-summary').value.trim();
+            if(summary) body.innerHTML += buildSec('Professional Summary', `<div class="pdf-text">${escapeHTML(summary)}</div>`);
+
+            // 4. Block Builder (handles mapping fields to FAANG template styling)
+            const buildBlocks = (data, isEdu) => {
+                if(data.length === 0) return '';
+                let html = '';
+                data.forEach(d => {
+                    if(!d.f1 && !d.f2 && !d.f5) return;
+                    
+                    const titleStr = escapeHTML(d.f1);
+                    const subStr = escapeHTML(d.f2);
+                    const locStr = escapeHTML(d.f3);
+                    const dateStr = escapeHTML(d.f4);
+                    
+                    // Convert newlines to bullet points
+                    let bulletsHTML = '';
+                    if(d.f5) {
+                        const bullets = escapeHTML(d.f5).split('\n').filter(l => l.trim() !== '');
+                        if(bullets.length > 0) {
+                            bulletsHTML = `<div class="pdf-bullets">` + bullets.map(l => `<div class="pdf-bullet">${l}</div>`).join('') + `</div>`;
+                        }
+                    }
+
+                    // For Education, Swap Title/Subtitle emphasis
+                    const primary = isEdu ? titleStr : titleStr; // Kept consistent, but logic can diverge
+                    const secondary = isEdu ? subStr : subStr;
+
+                    html += `
+                        <div class="pdf-item">
+                            <div class="pdf-item-header">
+                                <span class="pdf-item-title">${primary}</span>
+                                <span class="pdf-item-date">${dateStr}</span>
+                            </div>
+                            ${(secondary || locStr) ? `
+                            <div class="pdf-item-sub">
+                                <span class="pdf-item-subtitle">${secondary}</span>
+                                <span class="pdf-item-location">${locStr}</span>
+                            </div>` : ''}
+                            ${bulletsHTML}
+                        </div>`;
+                });
+                return html;
+            };
+
+            body.innerHTML += buildSec('Experience', buildBlocks(resumeData.exp, false));
+            body.innerHTML += buildSec('Projects', buildBlocks(resumeData.proj, false));
+            body.innerHTML += buildSec('Education', buildBlocks(resumeData.edu, true));
+
+            // 5. Skills
+            const skills = document.getElementById('val-skills').value.trim();
+            if(skills) {
+                // If skills have newlines, format them cleanly without bullets if they contain colons
+                const skillLines = escapeHTML(skills).split('\n').filter(l => l.trim() !== '');
+                const formattedSkills = skillLines.map(line => {
+                    if(line.includes(':')) {
+                        const parts = line.split(':');
+                        return `<div style="margin-bottom: 4px;"><strong>${parts[0]}:</strong> ${parts.slice(1).join(':')}</div>`;
+                    }
+                    return `<div>${line}</div>`;
+                }).join('');
+                
+                body.innerHTML += buildSec('Technical Skills', `<div class="pdf-text" style="margin-bottom:0;">${formattedSkills}</div>`);
+            }
+
+            evaluateResume();
+        }
+
+        // --- DIAGNOSTIC SCORING ENGINE ---
+        function evaluateResume() {
+            const rawText = document.getElementById('pdf-document').innerText;
+            const textLower = rawText.toLowerCase();
+            let score = 0;
+
+            // Base Info
+            if(document.getElementById('val-name').value) score += 5;
+            if(document.getElementById('val-email').value) score += 5;
+            if(document.getElementById('val-summary').value.length > 40) score += 5;
+            if(resumeData.exp.length > 0) score += 15;
+            if(document.getElementById('val-skills').value.length > 10) score += 10;
+
+            // Metrics Scanner (Numbers, %, $, K, M)
+            const metricRegex = /\$?\d+[\d,\.]*[%kKmM+]*/g;
+            const numMetrics = (rawText.match(metricRegex) || []).length;
+            score += Math.min(30, numMetrics * 4); // Max 30 pts for metrics
+
+            // Action Verb Scanner
+            const verbs = ['managed', 'led', 'developed', 'created', 'designed', 'optimized', 'reduced', 'increased', 'architected', 'spearheaded', 'implemented', 'orchestrated', 'streamlined'];
+            let numVerbs = 0;
+            verbs.forEach(v => { if(textLower.includes(v)) numVerbs++; });
+            score += Math.min(30, numVerbs * 4); // Max 30 pts for power verbs
+
+            score = Math.min(100, score);
+            
+            // Animate Score UI
+            const scoreText = document.getElementById('score-number');
+            const targetScore = score;
+            let currentDisplayScore = parseInt(scoreText.innerText) || 0;
+            
+            const animateScore = setInterval(() => {
+                if(currentDisplayScore === targetScore) clearInterval(animateScore);
+                else {
+                    currentDisplayScore += (targetScore > currentDisplayScore ? 1 : -1);
+                    scoreText.innerText = currentDisplayScore;
+                }
+            }, 10);
+            
+            const ring = document.getElementById('score-ring');
+            ring.style.strokeDashoffset = (40 * 2 * Math.PI) - (score / 100) * (40 * 2 * Math.PI);
+
+            let color = '#ef4444'; // Red
+            if(score >= 85) color = '#10b981'; // Emerald
+            else if(score >= 60) color = '#f59e0b'; // Amber
+            ring.style.color = color;
+        }
+
+        // --- FLAWLESS PDF EXPORT FIX (Architectural Isolation Technique) ---
+        function exportPDF() {
+            const overlay = document.getElementById('export-overlay');
+            const appContainer = document.getElementById('app-container');
+            const statusText = document.getElementById('export-status');
+            const progressBar = document.getElementById('export-progress');
+            
+            // 1. Activate Fullscreen Solid Overlay
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            // Reset Progress Bar
+            progressBar.style.transition = 'none';
+            progressBar.style.width = '0%';
+            setTimeout(() => {
+                progressBar.style.transition = 'width 2.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                progressBar.style.width = '100%';
+            }, 50);
+
+            // Staggered Animation Sequence
+            statusText.innerText = "Isolating Layout Engine...";
+            statusText.className = "text-accent font-mono text-sm uppercase tracking-widest h-6";
+            setTimeout(() => { statusText.innerText = "Capturing Vector Data..."; }, 800);
+            setTimeout(() => { statusText.innerText = "Generating PDF..."; }, 1600);
+
+            setTimeout(() => {
+                const name = document.getElementById('val-name').value || 'Resume';
+                const original = document.getElementById('pdf-document');
+                
+                // 2. Strict Wrapper & Clone (Forces explicit boundaries)
+                const exportWrapper = document.createElement('div');
+                exportWrapper.style.position = 'absolute';
+                exportWrapper.style.top = '0';
+                exportWrapper.style.left = '0';
+                exportWrapper.style.width = '794px';
+                exportWrapper.style.height = '1122px';
+                exportWrapper.style.backgroundColor = '#ffffff';
+
+                const clone = original.cloneNode(true);
+                clone.id = 'pdf-render-target';
+                clone.style.transform = 'none';
+                clone.style.boxShadow = 'none';
+                clone.style.position = 'relative'; 
+                clone.style.margin = '0'; 
+                clone.style.width = '100%';
+                clone.style.height = '100%';
+
+                exportWrapper.appendChild(clone);
+                document.body.appendChild(exportWrapper);
+                
+                // 3. THE MAGIC FIX: Hide the complex flexbox UI temporarily. 
+                appContainer.style.display = 'none';
+                window.scrollTo(0, 0);
+
+                // 4. Ultra-Strict PDF Configuration
+                // Removed px_scaling and hardcoded pixel sizes. 
+                // We let html2pdf handle the A4 mapping of our high-res (scale: 2) canvas natively.
+                const opt = {
+                    margin:       0,
+                    filename:     `${name.replace(/\s+/g, '_')}_AURA_ATS.pdf`,
+                    image:        { type: 'jpeg', quality: 1.0 },
+                    html2canvas:  { 
+                        scale: 2, 
+                        useCORS: true, 
+                        scrollY: 0, 
+                        scrollX: 0
+                    },
+                    jsPDF: { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'portrait'
+                    }
+                };
+
+                html2pdf().set(opt).from(exportWrapper).save().then(() => {
+                    // 5. Cleanup & Restore
+                    document.body.removeChild(exportWrapper);
+                    appContainer.style.display = 'flex';
+                    
+                    statusText.innerText = "Export Complete!";
+                    statusText.classList.replace('text-accent', 'text-emerald-400');
+                    
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        overlay.classList.remove('flex');
+                    }, 800);
+                }).catch(err => {
+                    console.error("PDF Engine Error:", err);
+                    if(document.body.contains(exportWrapper)) document.body.removeChild(exportWrapper);
+                    appContainer.style.display = 'flex';
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                    alert("Export failed. Please check console.");
+                });
+            }, 800); // Give overlay time to fade in and status to update
+        }
+
+        // Boot
+        window.onload = initData;
+    </script>
+</body>
+</html>

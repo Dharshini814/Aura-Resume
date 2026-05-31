@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score My Resume | AURA Engine</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite alternate',
+                        'scan': 'scan 3s ease-in-out infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 8s linear infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        scan: {
+                            '0%': { top: '0', opacity: '0' },
+                            '10%': { opacity: '1' },
+                            '90%': { opacity: '1' },
+                            '100%': { top: '100%', opacity: '0' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        shimmer: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(100%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #030305;
+            overflow-x: hidden;
+            color: #94a3b8;
+        }
+
+        /* --- Creative Background Textures --- */
+        .bg-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        }
+
+        /* --- Premium Spotlight UI Elements --- */
+        .spotlight-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .spotlight-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(600px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(168, 85, 247, 0.1), transparent 40%);
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .spotlight-card:hover::before { opacity: 1; }
+        .spotlight-content { position: relative; z-index: 1; }
+
+        /* --- Drag and Drop Glow --- */
+        .drag-active {
+            border-color: #a855f7 !important;
+            background: rgba(168, 85, 247, 0.05) !important;
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.2);
+        }
+
+        /* --- Circular Progress --- */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* --- Custom Scrollbar for Dropdown --- */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0a0a0f;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px rgba(139,92,246,0.4);
+        }
+    </style>
+</head>
+<body class="selection:bg-purple-500/30 selection:text-white antialiased">
+
+    <!-- BACKGROUND TEXTURES -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute inset-0 bg-grid-pattern"></div>
+        <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 blur-[140px] rounded-full mix-blend-screen animate-blob"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-fuchsia-600/10 blur-[140px] rounded-full mix-blend-screen animate-blob" style="animation-delay: 4s;"></div>
+    </div>
+
+    <!-- NAVBAR (Minimal version for app pages) -->
+    <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#030305]/70 backdrop-blur-xl transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center transition-all duration-300 group-hover:scale-105">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-2xl font-display font-bold tracking-wide text-white">AURA</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="index.html">
+                <button class="text-sm font-medium hover:text-white transition-colors flex items-center gap-2">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard
+                </button></a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="relative z-10 pt-32 pb-24 min-h-screen flex flex-col items-center">
+        
+        <!-- Header -->
+        <div class="text-center mb-12 px-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-mono uppercase tracking-wider mb-4 animate-float">
+                <i data-lucide="scan" class="w-3.5 h-3.5"></i> ATS Diagnostics
+            </div>
+            <h1 class="text-4xl md:text-5xl font-display font-black tracking-tight text-white mb-4">
+                Score My <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-fuchsia-400 to-blue-400">Resume</span>
+            </h1>
+            <p class="text-slate-400 max-w-xl mx-auto font-light">
+                Upload your resume to our NLP engine. We'll cross-reference it against industry benchmarks to reveal your true ATS parsing score.
+            </p>
+        </div>
+
+        <!-- MAIN CONTAINER (Upload & Config) -->
+        <div id="upload-view" class="w-full max-w-4xl px-6 transition-all duration-500">
+            <div class="spotlight-card p-1">
+                <div class="bg-[#0a0a0f] rounded-[1.4rem] p-6 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden">
+                    
+                    <div class="grid md:grid-cols-5 gap-8 spotlight-content relative z-10">
+                        
+                        <!-- Left: Role Selector & Options -->
+                        <div class="md:col-span-2 space-y-6">
+                            <div>
+                                <label class="block text-sm font-bold text-white mb-2 font-display">Target Job Role</label>
+                                <p class="text-xs text-slate-500 mb-4 font-light">Our AI compares your resume's semantic structure against the canonical requirements for this role.</p>
+                                
+                                <!-- Custom Dropdown -->
+                                <div class="relative" id="role-dropdown-container">
+                                    <button id="role-dropdown-btn" class="w-full flex items-center justify-between bg-[#161622] hover:bg-[#1a1a27] border border-white/10 p-4 rounded-xl text-left transition-colors focus:outline-none focus:border-blue-500/50 group">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                                                <i data-lucide="briefcase" class="w-4 h-4"></i>
+                                            </div>
+                                            <div>
+                                                <span id="selected-role-text" class="block text-sm text-white font-medium">Select a role...</span>
+                                            </div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-500 group-hover:text-white transition-colors"></i>
+                                    </button>
+                                    
+                                    <!-- Dropdown Menu -->
+                                    <div id="role-dropdown-menu" class="absolute top-full left-0 w-full mt-2 bg-[#161622] border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50 hidden opacity-0 transition-all duration-200 transform translate-y-[-10px] overflow-hidden">
+                                        <div class="max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                            <!-- Options generated by JS -->
+                                            <div class="role-option p-3 rounded-lg hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-slate-300 hover:text-white" data-value="software_engineer">
+                                                <i data-lucide="code" class="w-4 h-4 text-blue-400"></i> Software Engineer
+                                            </div>
+                                            <div class="role-option p-3 rounded-lg hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-slate-300 hover:text-white" data-value="data_scientist">
+                                                <i data-lucide="database" class="w-4 h-4 text-green-400"></i> Data Scientist
+                                            </div>
+                                            <div class="role-option p-3 rounded-lg hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-slate-300 hover:text-white" data-value="product_manager">
+                                                <i data-lucide="layout-dashboard" class="w-4 h-4 text-fuchsia-400"></i> Product Manager
+                                            </div>
+                                            <div class="role-option p-3 rounded-lg hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-slate-300 hover:text-white" data-value="marketing_manager">
+                                                <i data-lucide="trending-up" class="w-4 h-4 text-yellow-400"></i> Marketing Manager
+                                            </div>
+                                            <div class="role-option p-3 rounded-lg hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-slate-300 hover:text-white" data-value="financial_analyst">
+                                                <i data-lucide="line-chart" class="w-4 h-4 text-indigo-400"></i> Financial Analyst
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 flex gap-3">
+                                <i data-lucide="info" class="w-5 h-5 text-blue-400 shrink-0 mt-0.5"></i>
+                                <p class="text-xs text-blue-200/70 leading-relaxed font-light">
+                                    For accurate ATS simulation, ensure your resume is a standard PDF or DOCX format without complex tables or images.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Right: Drag & Drop Zone -->
+                        <div class="md:col-span-3">
+                            <div id="drop-zone" class="h-full min-h-[280px] border-2 border-dashed border-white/10 rounded-2xl bg-[#030305]/50 flex flex-col items-center justify-center p-8 transition-all duration-300 group hover:border-white/30 relative overflow-hidden cursor-pointer">
+                                
+                                <!-- Background hover effect -->
+                                <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                                
+                                <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx" />
+                                
+                                <div class="w-20 h-20 rounded-full bg-[#161622] border border-white/5 flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] transition-all duration-500 relative z-10">
+                                    <i data-lucide="cloud-upload" class="w-8 h-8 text-slate-400 group-hover:text-blue-400 transition-colors"></i>
+                                </div>
+                                
+                                <h3 class="text-xl font-display font-bold text-white mb-2 relative z-10">Drag & Drop Resume</h3>
+                                <p class="text-sm text-slate-500 text-center mb-6 relative z-10 font-light">Supports PDF, DOCX (Max 5MB)</p>
+                                
+                                <button id="browse-btn" class="relative z-10 px-6 py-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white text-sm font-medium transition-colors">
+                                    Browse Files
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCANNING / LOADING VIEW -->
+        <div id="loading-view" class="w-full max-w-2xl px-6 hidden opacity-0 transition-opacity duration-500 mt-12 text-center">
+            <div class="relative w-32 h-32 mx-auto mb-8">
+                <!-- Outer spinning rings -->
+                <div class="absolute inset-0 rounded-full border-t-2 border-r-2 border-transparent border-t-blue-500 border-r-fuchsia-500 animate-spin-slow"></div>
+                <div class="absolute inset-2 rounded-full border-b-2 border-l-2 border-transparent border-b-purple-500 border-l-blue-400 animate-spin-slow" style="animation-direction: reverse; animation-duration: 4s;"></div>
+                <!-- Inner pulse -->
+                <div class="absolute inset-6 rounded-full bg-[#161622] border border-white/10 flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.3)] animate-pulse-slow">
+                    <i data-lucide="cpu" class="w-8 h-8 text-white"></i>
+                </div>
+            </div>
+            
+            <h2 class="text-2xl font-display font-bold text-white mb-3">Initializing Neural Parser</h2>
+            
+            <!-- Terminal Output -->
+            <div class="bg-[#0a0a0f] border border-white/10 rounded-xl p-4 text-left max-w-md mx-auto h-32 overflow-hidden relative shadow-inner">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-fuchsia-500 to-purple-500"></div>
+                <div id="terminal-output" class="font-mono text-xs text-green-400 space-y-2 opacity-80 flex flex-col justify-end h-full">
+                    <div>> Connecting to ATS Engine...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULTS VIEW -->
+        <div id="results-view" class="w-full max-w-5xl px-6 hidden opacity-0 transition-all duration-700 transform translate-y-8 mt-4">
+            
+            <!-- Top Controls -->
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-display font-black text-white">Analysis <span class="text-blue-400">Complete</span></h2>
+                <button id="reset-btn" class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 text-sm font-medium transition-colors flex items-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Upload New
+                </button>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Column 1: The Score -->
+                <div class="spotlight-card p-1 lg:col-span-1">
+                    <div class="bg-[#0a0a0f] rounded-2xl h-full p-8 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                        
+                        <!-- Background glow based on score (simulated yellow/orange for medium score) -->
+                        <div class="absolute inset-0 bg-orange-500/5"></div>
+                        
+                        <h3 class="text-sm font-bold text-slate-400 font-display uppercase tracking-widest mb-8 relative z-10">ATS Match Score</h3>
+                        
+                        <!-- Circular Gauge -->
+                        <div class="relative w-48 h-48 mb-6 z-10">
+                            <!-- Background track -->
+                            <svg class="w-full h-full" viewBox="0 0 100 100">
+                                <circle class="text-[#161622] stroke-current" stroke-width="6" cx="50" cy="50" r="44" fill="transparent"></circle>
+                                <!-- Progress ring (to be animated via JS) -->
+                                <circle id="score-ring" class="text-orange-500 stroke-current progress-ring__circle drop-shadow-[0_0_10px_rgba(249,115,22,0.5)]" stroke-width="6" stroke-linecap="round" cx="50" cy="50" r="44" fill="transparent" stroke-dasharray="276.46" stroke-dashoffset="276.46"></circle>
+                            </svg>
+                            <!-- Score Text -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="score-number" class="text-6xl font-display font-black text-white">0</span>
+                                <span class="text-sm text-slate-500 font-mono">/ 100</span>
+                            </div>
+                        </div>
+                        
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold uppercase z-10">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Action Required
+                        </div>
+                        
+                        <p class="text-slate-400 text-sm mt-6 leading-relaxed font-light relative z-10">
+                            Your resume parsed successfully, but lacks specific semantic markers and keywords for <span id="result-role-name" class="text-white font-medium">the role</span>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Column 2 & 3: Diagnostics & Feedback -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- Keyword Gaps -->
+                    <div class="bg-[#0a0a0f] border border-white/5 rounded-2xl p-6 md:p-8 spotlight-card">
+                        <div class="spotlight-content">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                                    <i data-lucide="target" class="w-4 h-4 text-red-400"></i>
+                                </div>
+                                <h3 class="text-lg font-display font-bold text-white">Critical Keyword Gaps</h3>
+                            </div>
+                            
+                            <p class="text-sm text-slate-400 mb-6 font-light">The ATS engine did not detect these high-priority skills required for this job profile. Missing these will result in auto-rejection.</p>
+                            
+                            <div id="keyword-gaps-container" class="flex flex-wrap gap-2">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role-Specific Actionable Feedback -->
+                    <div class="bg-[#0a0a0f] border border-white/5 rounded-2xl p-6 md:p-8 spotlight-card">
+                        <div class="spotlight-content">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                    <i data-lucide="cpu" class="w-4 h-4 text-blue-400"></i>
+                                </div>
+                                <h3 class="text-lg font-display font-bold text-white">AI Diagnostic Suggestions</h3>
+                            </div>
+                            
+                            <div id="feedback-container" class="space-y-4">
+                                <!-- Populated by JS -->
+                            </div>
+                            
+                            <!-- Call to Action -->
+                            <div class="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <p class="text-sm text-slate-400 font-light">Want to fix this instantly?</p>
+                                <button class="w-full sm:w-auto px-6 py-2.5 rounded-xl btn-gradient text-white text-sm font-bold transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2">
+                                    <i data-lucide="wand-2" class="w-4 h-4"></i> Auto-Optimize Resume
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // UI State Elements
+        const uploadView = document.getElementById('upload-view');
+        const loadingView = document.getElementById('loading-view');
+        const resultsView = document.getElementById('results-view');
+        
+        // Dropdown Elements
+        const dropdownBtn = document.getElementById('role-dropdown-btn');
+        const dropdownMenu = document.getElementById('role-dropdown-menu');
+        const selectedRoleText = document.getElementById('selected-role-text');
+        const roleOptions = document.querySelectorAll('.role-option');
+        
+        // Drag & Drop Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        
+        // Data State
+        let selectedRole = null;
+        let selectedRoleDisplay = "";
+        
+        // --- DROPDOWN LOGIC ---
+        dropdownBtn.addEventListener('click', () => {
+            const isHidden = dropdownMenu.classList.contains('hidden');
+            if (isHidden) {
+                dropdownMenu.classList.remove('hidden');
+                setTimeout(() => {
+                    dropdownMenu.classList.remove('opacity-0', 'translate-y-[-10px]');
+                }, 10);
+            } else {
+                dropdownMenu.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => {
+                    dropdownMenu.classList.add('hidden');
+                }, 200);
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('role-dropdown-container').contains(e.target)) {
+                dropdownMenu.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => dropdownMenu.classList.add('hidden'), 200);
+            }
+        });
+
+        roleOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                selectedRole = option.dataset.value;
+                selectedRoleDisplay = option.innerText.trim();
+                
+                // Update button content
+                selectedRoleText.innerHTML = option.innerHTML;
+                
+                // Close menu
+                dropdownMenu.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => dropdownMenu.classList.add('hidden'), 200);
+            });
+        });
+
+        // --- DRAG AND DROP LOGIC ---
+        browseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            fileInput.click();
+        });
+
+        dropZone.addEventListener('click', (e) => {
+            if(e.target !== browseBtn) {
+                fileInput.click();
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('drag-active');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('drag-active');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                if (!selectedRole) {
+                    alert("Please select a Target Job Role first.");
+                    return;
+                }
+                const file = files[0];
+                const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                
+                if (validTypes.includes(file.type)) {
+                    startAnalysis(file.name);
+                } else {
+                    alert("Please upload a valid PDF or DOCX file.");
+                }
+            }
+        }
+
+        // --- ANALYSIS SIMULATION LOGIC ---
+        
+        // Mock ML Data based on role
+        const mlMockData = {
+            software_engineer: {
+                score: 68,
+                color: 'orange',
+                gaps: ['Microservices', 'CI/CD Pipelines', 'Docker/Kubernetes', 'System Design'],
+                feedback: [
+                    { type: 'structure', text: 'Action verbs identified, but lack quantifiable metrics (e.g., "Reduced latency by X%").' },
+                    { type: 'semantic', text: 'Semantic similarity to standard "Software Engineer" requirements is low regarding deployment/DevOps concepts.' },
+                    { type: 'format', text: 'Section headers parse cleanly. Contact information successfully extracted.' }
+                ]
+            },
+            data_scientist: {
+                score: 74,
+                color: 'yellow',
+                gaps: ['TensorFlow/PyTorch', 'A/B Testing', 'Data Pipelines', 'Model Deployment'],
+                feedback: [
+                    { type: 'structure', text: 'Excellent quantitative data points found, but missing business impact context.' },
+                    { type: 'semantic', text: 'Strong match on analytics algorithms, weak match on production engineering terms.' },
+                    { type: 'format', text: 'Clean parse rate. No complex tables blocking data extraction.' }
+                ]
+            },
+            default: {
+                score: 55,
+                color: 'red',
+                gaps: ['Cross-functional Leadership', 'Agile Methodologies', 'Strategic Planning', 'KPI Tracking'],
+                feedback: [
+                    { type: 'structure', text: 'Bullet points are mostly passive (e.g., "Responsible for"). Need active verbs.' },
+                    { type: 'semantic', text: 'Keywords are scattered and lack contextual density required for this senior level.' },
+                    { type: 'format', text: 'Warning: Contact info format is non-standard. May fail older Taleo parsers.' }
+                ]
+            }
+        };
+
+        function startAnalysis(filename) {
+            // Hide upload, show loading
+            uploadView.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => {
+                uploadView.classList.add('hidden');
+                loadingView.classList.remove('hidden');
+                setTimeout(() => loadingView.classList.remove('opacity-0'), 50);
+                
+                runTerminalSequence();
+            }, 500);
+        }
+
+        function runTerminalSequence() {
+            const output = document.getElementById('terminal-output');
+            const lines = [
+                `> Uploading artifact: ${selectedRoleDisplay.replace(/\s+/g, '_').toLowerCase()}_resume.pdf`,
+                "> Extracting plaintext via pdf_miner...",
+                "> NLP Tokenization initialized (spaCy engine)...",
+                "> Running Named Entity Recognition (NER) for skills...",
+                `> Loading semantic matching model (all-MiniLM-L6-v2)...`,
+                `> Cross-referencing canonical profile: ${selectedRoleDisplay}`,
+                "> Computing Cosine Similarity against JD embeddings...",
+                "> Compiling heuristic scoring logic...",
+                "> Analysis complete. Rendering UI."
+            ];
+
+            output.innerHTML = '';
+            let i = 0;
+            
+            function addLine() {
+                if (i < lines.length) {
+                    const div = document.createElement('div');
+                    div.innerText = lines[i];
+                    output.appendChild(div);
+                    i++;
+                    setTimeout(addLine, Math.random() * 400 + 300); // Random delay between 300-700ms
+                } else {
+                    setTimeout(showResults, 800);
+                }
+            }
+            addLine();
+        }
+
+        function showResults() {
+            // Hide loading, show results
+            loadingView.classList.add('opacity-0');
+            setTimeout(() => {
+                loadingView.classList.add('hidden');
+                resultsView.classList.remove('hidden');
+                
+                populateResultsData();
+                
+                setTimeout(() => {
+                    resultsView.classList.remove('opacity-0', 'translate-y-8');
+                    animateScore();
+                }, 50);
+            }, 500);
+        }
+
+        function populateResultsData() {
+            const data = mlMockData[selectedRole] || mlMockData['default'];
+            
+            document.getElementById('result-role-name').innerText = selectedRoleDisplay;
+            
+            // Set Score Number target as attribute
+            const scoreNumEl = document.getElementById('score-number');
+            scoreNumEl.dataset.target = data.score;
+            
+            // Populate Gaps
+            const gapsContainer = document.getElementById('keyword-gaps-container');
+            gapsContainer.innerHTML = '';
+            data.gaps.forEach(gap => {
+                gapsContainer.innerHTML += `
+                    <span class="px-3 py-1.5 rounded-lg bg-[#161622] border border-red-500/20 text-slate-300 text-sm font-mono flex items-center gap-2">
+                        <i data-lucide="x" class="w-3 h-3 text-red-500"></i> ${gap}
+                    </span>
+                `;
+            });
+
+            // Populate Feedback
+            const feedbackContainer = document.getElementById('feedback-container');
+            feedbackContainer.innerHTML = '';
+            
+            const iconMap = {
+                'structure': { icon: 'align-left', color: 'fuchsia' },
+                'semantic': { icon: 'brain', color: 'blue' },
+                'format': { icon: 'file-check', color: 'green' }
+            };
+
+            data.feedback.forEach(item => {
+                const conf = iconMap[item.type];
+                feedbackContainer.innerHTML += `
+                    <div class="p-4 rounded-xl bg-[#161622] border border-white/5 flex gap-4 items-start relative overflow-hidden group hover:border-${conf.color}-500/30 transition-colors">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-${conf.color}-500/50"></div>
+                        <div class="p-2 rounded-lg bg-${conf.color}-500/10 shrink-0">
+                            <i data-lucide="${conf.icon}" class="w-4 h-4 text-${conf.color}-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-white text-sm font-bold capitalize mb-1">${item.type} Analysis</p>
+                            <p class="text-slate-400 text-sm font-light leading-relaxed">${item.text}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            lucide.createIcons();
+        }
+
+        function animateScore() {
+            const data = mlMockData[selectedRole] || mlMockData['default'];
+            const targetScore = data.score;
+            const scoreNumEl = document.getElementById('score-number');
+            const scoreRing = document.getElementById('score-ring');
+            
+            // Update Ring colors based on score
+            scoreRing.classList.remove('text-orange-500', 'text-yellow-500', 'text-red-500', 'text-green-500');
+            if(targetScore >= 80) scoreRing.classList.add('text-green-500');
+            else if(targetScore >= 70) scoreRing.classList.add('text-yellow-500');
+            else if(targetScore >= 60) scoreRing.classList.add('text-orange-500');
+            else scoreRing.classList.add('text-red-500');
+
+            // SVG Circle math
+            const radius = scoreRing.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            
+            scoreRing.style.strokeDasharray = `${circumference} ${circumference}`;
+            scoreRing.style.strokeDashoffset = circumference;
+
+            // Trigger reflow
+            scoreRing.getBoundingClientRect();
+
+            // Animate Circle
+            const offset = circumference - (targetScore / 100) * circumference;
+            scoreRing.style.strokeDashoffset = offset;
+
+            // Count Up Number
+            let current = 0;
+            const duration = 1500;
+            const stepTime = Math.abs(Math.floor(duration / targetScore));
+            
+            const timer = setInterval(() => {
+                current++;
+                scoreNumEl.innerText = current;
+                if (current >= targetScore) {
+                    clearInterval(timer);
+                }
+            }, stepTime);
+        }
+
+        // --- RESET LOGIC ---
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            resultsView.classList.add('opacity-0', 'translate-y-8');
+            setTimeout(() => {
+                resultsView.classList.add('hidden');
+                uploadView.classList.remove('hidden');
+                setTimeout(() => {
+                    uploadView.classList.remove('opacity-0', 'translate-y-4');
+                }, 50);
+                
+                // Reset form
+                fileInput.value = '';
+                document.getElementById('score-number').innerText = '0';
+                document.getElementById('score-ring').style.strokeDashoffset = document.getElementById('score-ring').r.baseVal.value * 2 * Math.PI;
+            }, 500);
+        });
+
+        // --- SPOTLIGHT HOVER EFFECT ---
+        const spotlightCards = document.querySelectorAll('.spotlight-card');
+        spotlightCards.forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body>
+</html>

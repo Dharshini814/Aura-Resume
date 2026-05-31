@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AURA Resume</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite alternate',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'text-shimmer': 'text-shimmer 4s ease-in-out infinite alternate',
+                        'fade-in-up': 'fade-in-up 0.6s ease-out forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        shimmer: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(100%)' }
+                        },
+                        'text-shimmer': {
+                            '0%': { backgroundPosition: '0% 50%' },
+                            '100%': { backgroundPosition: '100% 50%' }
+                        },
+                        'fade-in-up': {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #030305;
+            overflow: hidden;
+            color: #94a3b8;
+        }
+
+        /* --- Creative Background Textures --- */
+        .bg-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        }
+
+        /* --- Premium Spotlight UI Elements --- */
+        .spotlight-card {
+            position: relative;
+            background: rgba(10, 10, 15, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 2rem;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .spotlight-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(168, 85, 247, 0.08), transparent 40%);
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .spotlight-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: radial-gradient(400px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(255, 255, 255, 0.2), transparent 40%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .spotlight-card:hover::before,
+        .spotlight-card:hover::after { opacity: 1; }
+        .spotlight-content { position: relative; z-index: 1; }
+
+        /* --- Custom Inputs --- */
+        .custom-input {
+            background: #090c10;
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #f1f5f9;
+            transition: all 0.3s ease;
+        }
+        
+        .input-group:focus-within .custom-input {
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            background: #0d1117;
+        }
+
+        .input-group:focus-within .input-icon {
+            color: #a855f7;
+            transform: scale(1.1);
+        }
+
+        .custom-input::placeholder { color: #475569; }
+
+        /* --- Sweeping Button Effect --- */
+        .btn-sweep {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-sweep::after {
+            content: "";
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: skewX(-20deg);
+            transition: 0.5s;
+        }
+        .btn-sweep:hover::after { left: 200%; }
+
+        /* --- Staggered Animation Utilities --- */
+        .stagger-1 { animation-delay: 100ms; }
+        .stagger-2 { animation-delay: 200ms; }
+        .stagger-3 { animation-delay: 300ms; }
+        .stagger-4 { animation-delay: 400ms; }
+        .stagger-5 { animation-delay: 500ms; }
+    </style>
+</head>
+<body class="selection:bg-purple-500/30 selection:text-white antialiased h-[100dvh] w-screen overflow-hidden flex flex-col">
+
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute inset-0 bg-grid-pattern"></div>
+        <div class="absolute top-0 left-[10%] w-[500px] h-[500px] bg-blue-600/15 blur-[140px] rounded-full mix-blend-screen animate-blob"></div>
+        <div class="absolute bottom-0 right-[10%] w-[600px] h-[600px] bg-fuchsia-600/15 blur-[140px] rounded-full mix-blend-screen animate-blob" style="animation-delay: 2s;"></div>
+    </div>
+
+    <nav class="relative z-50 border-b border-white/5 bg-transparent w-full shrink-0">
+        <div class="max-w-7xl mx-auto px-6 h-14 sm:h-16 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-fuchsia-600 flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-white"></i>
+                </div>
+                <span class="text-xl font-display font-bold tracking-wide text-white">AURA</span>
+            </a>
+            <a href="signup.html" class="text-xs font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20">
+                Create Account <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6 min-h-0">
+        
+        <div class="w-full max-w-[900px] h-full max-h-[600px] spotlight-card flex flex-col md:flex-row transform scale-95 opacity-0 animate-fade-in-up">
+            
+            <div class="spotlight-content flex flex-col md:flex-row w-full h-full">
+                
+                <div class="hidden md:flex flex-col justify-between w-[45%] h-full p-8 relative overflow-hidden bg-gradient-to-br from-[#0a0a0f] to-[#030305] border-r border-white/5">
+                    <div class="absolute top-[-20%] left-[-20%] w-[200px] h-[200px] bg-fuchsia-500/20 blur-[60px] rounded-full"></div>
+                    <div class="absolute bottom-[-10%] right-[-10%] w-[200px] h-[200px] bg-blue-500/20 blur-[60px] rounded-full"></div>
+                    
+                    <div class="relative z-10">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-mono uppercase tracking-wider mb-4">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span> Engine v2.0
+                        </div>
+                        <h2 class="text-2xl lg:text-3xl font-display font-bold text-white leading-snug mb-3">
+                            Log in to your <br />
+                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-fuchsia-400">Career Hub.</span>
+                        </h2>
+                        <p class="text-slate-400 text-xs font-light leading-relaxed">
+                            Access your saved resumes, view ATS scores, and generate new algorithmic bullet points instantly.
+                        </p>
+                    </div>
+
+                    <div class="relative z-10 mt-6 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                        <div class="flex gap-1 text-yellow-400 mb-2">
+                            <i data-lucide="star" class="w-3 h-3 fill-current"></i><i data-lucide="star" class="w-3 h-3 fill-current"></i><i data-lucide="star" class="w-3 h-3 fill-current"></i><i data-lucide="star" class="w-3 h-3 fill-current"></i><i data-lucide="star" class="w-3 h-3 fill-current"></i>
+                        </div>
+                        <p class="text-slate-300 text-xs italic mb-3 leading-relaxed">
+                            "AURA completely changed my application strategy. I went from 0 callbacks to 3 interviews in a single week."
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <img src="https://i.pravatar.cc/100?img=68" alt="User" class="w-7 h-7 rounded-full border border-white/20" />
+                            <div>
+                                <div class="text-white text-[11px] font-bold font-display">Sarah Jenkins</div>
+                                <div class="text-[9px] text-blue-400 font-mono">Product Designer @ Meta</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-[55%] h-full overflow-y-auto p-6 sm:p-8 flex flex-col justify-center relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    
+                    <div class="mb-5 opacity-0 animate-fade-in-up stagger-1 shrink-0">
+                        <h1 class="text-xl sm:text-2xl font-display font-bold text-white mb-1">Welcome Back</h1>
+                        <p class="text-slate-400 text-xs sm:text-sm">Choose a login method to continue</p>
+                    </div>
+
+                    <div class="space-y-2.5 mb-5 opacity-0 animate-fade-in-up stagger-2 shrink-0">
+                        <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-[#0d1117] border border-white/10 hover:border-white/30 hover:bg-[#161b22] text-white font-medium text-xs transition-all duration-300 group shadow-sm">
+                            <div class="bg-white p-1 rounded-full group-hover:scale-110 transition-transform">
+                                <svg class="w-3 h-3" viewBox="0 0 24 24">
+                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                                </svg>
+                            </div>
+                            Continue with Google
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-4 mb-5 opacity-0 animate-fade-in-up stagger-3 shrink-0">
+                        <div class="h-px flex-1 bg-white/10"></div>
+                        <span class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Or continue with</span>
+                        <div class="h-px flex-1 bg-white/10"></div>
+                    </div>
+
+                    <div class="flex bg-[#090c10] border border-white/5 rounded-lg p-1 mb-5 opacity-0 animate-fade-in-up stagger-3 shrink-0">
+                        <button id="tab-password" class="flex-1 py-1.5 text-[11px] font-semibold rounded-md bg-white/10 text-white shadow-sm transition-all" onclick="switchTab('password')">Password</button>
+                        <button id="tab-magic" class="flex-1 py-1.5 text-[11px] font-semibold rounded-md text-slate-400 hover:text-white transition-all" onclick="switchTab('magic')">Magic Link ✨</button>
+                    </div>
+
+                    <form id="login-form" class="space-y-4 opacity-0 animate-fade-in-up stagger-4 shrink-0" onsubmit="event.preventDefault();">
+                        
+                        <div class="space-y-1 input-group">
+                            <label class="text-[11px] font-semibold text-slate-400 ml-1">Email Address</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-500 input-icon transition-colors duration-300"></i>
+                                </div>
+                                <input type="email" id="email" placeholder="you@example.com" class="custom-input w-full rounded-xl pl-10 pr-4 py-2.5 text-xs" required>
+                            </div>
+                        </div>
+
+                        <div id="password-field" class="space-y-1 input-group">
+                            <div class="flex items-center justify-between ml-1">
+                                <label class="text-[11px] font-semibold text-slate-400">Password</label>
+                                <button type="button" id="forgot-password-btn" class="text-[10px] text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus:underline">Forgot key?</button>
+                            </div>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-500 input-icon transition-colors duration-300"></i>
+                                </div>
+                                <input type="password" id="password" placeholder="••••••••" class="custom-input w-full rounded-xl pl-10 pr-4 py-2.5 text-xs">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submit-btn" class="w-full btn-sweep mt-2 rounded-xl bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white font-bold py-2.5 text-xs shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_35px_rgba(139,92,246,0.5)] transition-all duration-300 flex justify-center items-center gap-2">
+                            Access Dashboard
+                        </button>
+                    </form>
+
+                    <p class="mt-5 text-center text-[11px] text-slate-500 opacity-0 animate-fade-in-up stagger-5 shrink-0">
+                        Don't have an account? <br />
+                        <a href="signup.html" class="text-white font-semibold hover:text-fuchsia-400 transition-colors mt-1 inline-block border-b border-transparent hover:border-fuchsia-400">Create a free workspace</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Spotlight effect
+        document.addEventListener('DOMContentLoaded', () => {
+            const spotlightCards = document.querySelectorAll('.spotlight-card');
+            
+            spotlightCards.forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+                });
+            });
+        });
+
+        // Global track for active submission tab mode
+        let currentAuthMode = 'password';
+
+        // Tab Switching Logic (Password vs Magic Link)
+        function switchTab(mode) {
+            currentAuthMode = mode;
+            const tabPassword = document.getElementById('tab-password');
+            const tabMagic = document.getElementById('tab-magic');
+            const passwordField = document.getElementById('password-field');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            // Reset styles
+            tabPassword.className = 'flex-1 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition-all';
+            tabMagic.className = 'flex-1 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition-all';
+            
+            if (mode === 'password') {
+                tabPassword.className = 'flex-1 py-1.5 text-xs font-semibold rounded-md bg-white/10 text-white shadow-sm transition-all';
+                passwordField.style.display = 'block';
+                passwordField.style.opacity = '1'; 
+                submitBtn.innerHTML = 'Access Dashboard';
+                passwordField.querySelector('input').setAttribute('required', 'true');
+            } else {
+                tabMagic.className = 'flex-1 py-1.5 text-xs font-semibold rounded-md bg-white/10 text-white shadow-sm transition-all';
+                passwordField.style.display = 'none';
+                passwordField.querySelector('input').removeAttribute('required');
+                submitBtn.innerHTML = 'Send Magic Link <i data-lucide="wand-2" class="w-4 h-4 ml-1"></i>';
+                lucide.createIcons(); // re-init icons for the new button content
+            }
+        }
+
+        document.getElementById("google-login-btn").addEventListener("click", () => {
+            window.location.href = "http://localhost:5000/api/auth/google";
+        });
+
+        // FORGOT PASSWORD MECHANISM
+        document.getElementById("forgot-password-btn").addEventListener("click", async () => {
+            const email = document.getElementById("email").value;
+            if (!email) {
+                alert("Please enter your email address in the input field first.");
+                return;
+            }
+            
+            try {
+                const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert("Password reset instructions have been dispatched to your email address.");
+                } else {
+                    alert(data.message || "Failed to process forgot password request.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Server Connection Error.");
+            }
+        });
+
+        // FORM SUBMISSION LAYER (PASSWORD OR MAGIC LINK DYNAMIC ROUTING)
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+
+            if (currentAuthMode === 'password') {
+                const password = document.getElementById("password").value;
+                try {
+                    const response = await fetch("http://localhost:5000/api/auth/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email, password }),
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        alert("Login Successful");
+                       window.location.href = "http://localhost:5000/index.html"; 
+                    } else {
+                        alert(data.message || "Login Failed");
+                    }
+                } catch (error) {
+                    console.log(error);
+                    alert("Server Error");
+              
+  }
+            } else {
+                // MAGIC LINK ROUTE ACTION EXECUTION
+                try {
+                    const response = await fetch("http://localhost:5000/api/auth/magic-link", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email }),
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        alert("✨ Magic Link sent successfully! Check your inbox to sign in.");
+                    } else {
+                        alert(data.message || "Failed to generate Magic Link.");
+                    }
+                } catch (error) {
+                    console.log(error);
+                    alert("Server Error connecting to Magic Link pipeline.");
+                }
+            }
+        });
+    </script>
+
+   
+
+</body>
+</html>
