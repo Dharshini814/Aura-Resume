@@ -12,7 +12,7 @@ dotenv.config();
 
 require("./config/passport");
 
-const authRoutes = require("./routes/authRoutes");
+const authRoutes = require(".authRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,10 +22,8 @@ const PORT = process.env.PORT || 5000;
 // CORS (frontend connection)
 app.use(
   cors({
-    origin: [
-      "http://localhost:5000",
-      "https://aura-resume-dujg.onrender.com"
-    ],
+    origin: "http://localhost:5000",
+     "https://aura-resume-dujg.onrender.com"
     credentials: true,
   })
 );
@@ -64,7 +62,7 @@ app.use("/api/auth", authRoutes);
 
 // Home route (optional fallback)
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/public/login.html"));
+  res.sendFile(path.join(__dirname, "../Frontend/public/index.html"));
 });
 
 /* ================= DATABASE ================= */
