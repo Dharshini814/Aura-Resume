@@ -1,5 +1,6 @@
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
+
 const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
@@ -10,20 +11,24 @@ const session = require("express-session");
 
 dotenv.config();
 
+// Passport config
 require("./config/passport");
 
-const authRoutes = require(".authRoutes");
+// Auth routes
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 /* ================= MIDDLEWARE ================= */
 
-// CORS (frontend connection)
+// CORS
 app.use(
   cors({
-    origin: "http://localhost:5000",
-     "https://aura-resume-dujg.onrender.com"
+    origin: [
+      "http://localhost:5000",
+      "https://aura-resume-dujg.onrender.com"
+    ],
     credentials: true,
   })
 );
@@ -31,7 +36,7 @@ app.use(
 // JSON parser
 app.use(express.json());
 
-// Session (must be before passport.session)
+// Session middleware
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "aura_secret",
@@ -40,13 +45,12 @@ app.use(
   })
 );
 
-// Passport
+// Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
 /* ================= STATIC FRONTEND ================= */
 
-// Serve frontend files
 app.use(
   express.static(
     path.join(__dirname, "../Frontend/public"),
@@ -60,9 +64,11 @@ app.use(
 
 app.use("/api/auth", authRoutes);
 
-// Home route (optional fallback)
+// Landing page
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/public/index.html"));
+  res.sendFile(
+    path.join(__dirname, "../Frontend/public/index.html")
+  );
 });
 
 /* ================= DATABASE ================= */
@@ -70,12 +76,12 @@ app.get("/", (req, res) => {
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("MongoDB Connected");
+    console.log("✅ MongoDB Connected");
 
     app.listen(PORT, () => {
-      console.log(`Server running on ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.log("MongoDB Error:", err);
+    console.error("❌ MongoDB Error:", err);
   });
