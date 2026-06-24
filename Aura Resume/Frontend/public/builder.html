@@ -664,102 +664,91 @@
         }
 
         // --- FLAWLESS PDF EXPORT FIX (Architectural Isolation Technique) ---
-        function exportPDF() {
-            const overlay = document.getElementById('export-overlay');
-            const appContainer = document.getElementById('app-container');
-            const statusText = document.getElementById('export-status');
-            const progressBar = document.getElementById('export-progress');
-            
-            // 1. Activate Fullscreen Solid Overlay
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
-            
-            // Reset Progress Bar
-            progressBar.style.transition = 'none';
-            progressBar.style.width = '0%';
-            setTimeout(() => {
-                progressBar.style.transition = 'width 2.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                progressBar.style.width = '100%';
-            }, 50);
+       function exportPDF() {
+    const overlay = document.getElementById('export-overlay');
+    const appContainer = document.getElementById('app-container');
+    const statusText = document.getElementById('export-status');
+    const progressBar = document.getElementById('export-progress');
 
-            // Staggered Animation Sequence
-            statusText.innerText = "Isolating Layout Engine...";
-            statusText.className = "text-accent font-mono text-sm uppercase tracking-widest h-6";
-            setTimeout(() => { statusText.innerText = "Capturing Vector Data..."; }, 800);
-            setTimeout(() => { statusText.innerText = "Generating PDF..."; }, 1600);
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
 
-            setTimeout(() => {
-                const name = document.getElementById('val-name').value || 'Resume';
-                const original = document.getElementById('pdf-document');
-                
-                // 2. Strict Wrapper & Clone (Forces explicit boundaries)
-                const exportWrapper = document.createElement('div');
-                exportWrapper.style.position = 'absolute';
-                exportWrapper.style.top = '0';
-                exportWrapper.style.left = '0';
-                exportWrapper.style.width = '794px';
-                exportWrapper.style.height = '1122px';
-                exportWrapper.style.backgroundColor = '#ffffff';
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
 
-                const clone = original.cloneNode(true);
-                clone.id = 'pdf-render-target';
-                clone.style.transform = 'none';
-                clone.style.boxShadow = 'none';
-                clone.style.position = 'relative'; 
-                clone.style.margin = '0'; 
-                clone.style.width = '100%';
-                clone.style.height = '100%';
+    setTimeout(() => {
+        progressBar.style.transition = 'width 2.6s cubic-bezier(0.4, 0, 0.2, 1)';
+        progressBar.style.width = '100%';
+    }, 50);
 
-                exportWrapper.appendChild(clone);
-                document.body.appendChild(exportWrapper);
-                
-                // 3. THE MAGIC FIX: Hide the complex flexbox UI temporarily. 
-                appContainer.style.display = 'none';
-                window.scrollTo(0, 0);
+    statusText.innerText = "Preparing document...";
 
-                // 4. Ultra-Strict PDF Configuration
-                // Removed px_scaling and hardcoded pixel sizes. 
-                // We let html2pdf handle the A4 mapping of our high-res (scale: 2) canvas natively.
-                const opt = {
-                    margin:       0,
-                    filename:     `${name.replace(/\s+/g, '_')}_AURA_ATS.pdf`,
-                    image:        { type: 'jpeg', quality: 1.0 },
-                    html2canvas:  { 
-                        scale: 2, 
-                        useCORS: true, 
-                        scrollY: 0, 
-                        scrollX: 0
-                    },
-                    jsPDF: { 
-                        unit: 'mm', 
-                        format: 'a4', 
-                        orientation: 'portrait'
-                    }
-                };
+    setTimeout(() => {
+        statusText.innerText = "Rendering layout...";
 
-                html2pdf().set(opt).from(exportWrapper).save().then(() => {
-                    // 5. Cleanup & Restore
-                    document.body.removeChild(exportWrapper);
-                    appContainer.style.display = 'flex';
-                    
-                    statusText.innerText = "Export Complete!";
-                    statusText.classList.replace('text-accent', 'text-emerald-400');
-                    
-                    setTimeout(() => {
-                        overlay.classList.add('hidden');
-                        overlay.classList.remove('flex');
-                    }, 800);
-                }).catch(err => {
-                    console.error("PDF Engine Error:", err);
-                    if(document.body.contains(exportWrapper)) document.body.removeChild(exportWrapper);
-                    appContainer.style.display = 'flex';
+        const name = document.getElementById('val-name').value || 'Resume';
+
+        // 🎯 IMPORTANT: export the REAL document (no clone)
+        const element = document.getElementById('pdf-document');
+
+        // Backup transform
+        const originalTransform = element.style.transform;
+
+        // Force clean render state for export ONLY
+        element.style.transform = "scale(1)";
+        element.style.position = "relative";
+        element.style.left = "0";
+        element.style.top = "0";
+
+        const opt = {
+            margin: 0,
+            filename: `${name.replace(/\s+/g, '_')}_AURA_ATS.pdf`,
+            image: { type: 'jpeg', quality: 1.0 },
+
+            html2canvas: {
+                scale: 3,          // 🔥 high quality export
+                useCORS: true,
+                scrollX: 0,
+                scrollY: 0,
+                backgroundColor: "#ffffff"
+            },
+
+            jsPDF: {
+                unit: 'px',
+                format: [794, 1122], // EXACT your A4 pixel size
+                orientation: 'portrait'
+            }
+        };
+
+        html2pdf()
+            .set(opt)
+            .from(element)
+            .save()
+            .then(() => {
+
+                // restore UI state
+                element.style.transform = originalTransform;
+
+                statusText.innerText = "Export Complete!";
+                statusText.classList.replace('text-accent', 'text-emerald-400');
+
+                setTimeout(() => {
                     overlay.classList.add('hidden');
                     overlay.classList.remove('flex');
-                    alert("Export failed. Please check console.");
-                });
-            }, 800); // Give overlay time to fade in and status to update
-        }
+                }, 800);
+            })
+            .catch(err => {
+                console.error(err);
 
+                element.style.transform = originalTransform;
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+
+                alert("PDF Export failed. Check console.");
+            });
+
+    }, 600);
+}
         // Boot
         window.onload = initData;
     </script>
